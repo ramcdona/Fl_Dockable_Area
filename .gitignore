@@ -1,0 +1,17 @@
+# Build trees
+/build/
+/build-*/
+/cmake-build-*/
+/out/
+
+# IDE and editor files
+/.idea/
+/.vscode/
+/.vs/
+*.swp
+*~
+.DS_Store
+
+# Generated documentation
+/documentation/html/
+/documentation/latex/
