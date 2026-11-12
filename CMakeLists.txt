@@ -22,6 +22,7 @@ endforeach()
 project(Fl_Dockable_Area VERSION ${FL_DOCKABLE_MAJOR}.${FL_DOCKABLE_MINOR}.${FL_DOCKABLE_PATCH}
   LANGUAGES C CXX)
 
+option(FL_DOCKABLE_AREA_BUILD_TEST "Build the test programs" ON)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -107,3 +108,8 @@ install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/Fl_Dockable_AreaConfigVersion.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Fl_Dockable_Area
 )
+
+if(FL_DOCKABLE_AREA_BUILD_TEST)
+  enable_testing()
+  add_subdirectory(test)
+endif()
