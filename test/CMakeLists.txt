@@ -18,3 +18,7 @@ target_link_libraries(unittest_dockable PRIVATE fltk::dockable_area)
 target_include_directories(unittest_dockable PRIVATE ${PROJECT_SOURCE_DIR}/src)
 add_test(NAME unittest_dockable COMMAND unittest_dockable)
 set_tests_properties(unittest_dockable PROPERTIES LABELS display TIMEOUT 60)
+
+# The demo: a center box and panels around it, one of them an OpenGL view.
+add_executable(dockable_area WIN32 MACOSX_BUNDLE dockable_area.cxx)
+target_link_libraries(dockable_area PRIVATE fltk::dockable_area fltk::gl)
