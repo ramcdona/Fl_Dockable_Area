@@ -1,0 +1,13 @@
+#
+# CMake package file for the Fl_Dockable_Area extension to the Fast Light Tool Kit (FLTK).
+#
+# Defines the target fltk::dockable_area.
+#
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(FLTK CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/Fl_Dockable_AreaTargets.cmake")
+check_required_components(Fl_Dockable_Area)
