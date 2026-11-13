@@ -109,7 +109,7 @@ static Fl_Window *win = 0;
 static Fl_Dockable_Area *area = 0;
 static Fl_Box *view = 0;
 
-// An area of 1000 by 700 holding a center box
+// An area of 1000 by 600 holding a center box
 static void setup() {
   if (win) {
     Fl::do_widget_deletion();
@@ -117,11 +117,11 @@ static void setup() {
     Fl::do_widget_deletion();
   }
   Fl_Group::current(0);
-  win = new Fl_Window(1000, 700);
+  win = new Fl_Window(1000, 600);
   win->end();
   Fl_Group::current(0);
   view = new Fl_Box(0, 0, 10, 10, "view");
-  area = new Fl_Dockable_Area(0, 0, 1000, 700, view);
+  area = new Fl_Dockable_Area(0, 0, 1000, 600, view);
   win->add(area);
   win->resizable(area);
   win->show();
@@ -221,7 +221,7 @@ TEST(Dock, ShowsAtRight) {
   EXPECT_TRUE(p->parent() == area);
   EXPECT_EQ(p->x(), 800);
   EXPECT_EQ(p->w(), 200);
-  EXPECT_EQ(p->h(), 700);
+  EXPECT_EQ(p->h(), 600);
   EXPECT_EQ(view->w(), 800);
   // The body is below the title bar, its widgets with it
   EXPECT_EQ(p->body()->y(), Fl_Dockable_Panel::bar_height());
@@ -251,8 +251,8 @@ TEST(Dock, FourSides) {
   EXPECT_EQ(t->h(), 80 + Fl_Dockable_Panel::bar_height());
   EXPECT_EQ(view->x(), 150);
   EXPECT_EQ(view->y(), t->h());
-  EXPECT_EQ(view->h(), 700 - t->h() - b->h());
-  EXPECT_EQ(b->y() + b->h(), 700);
+  EXPECT_EQ(view->h(), 600 - t->h() - b->h());
+  EXPECT_EQ(b->y() + b->h(), 600);
   return true;
 }
 
@@ -328,10 +328,10 @@ TEST(Dock, StackedInOnePlace) {
   EXPECT_TRUE(s->is_vertical());
   EXPECT_EQ(a->y(), 0);
   EXPECT_EQ(b->y(), a->h());
-  EXPECT_EQ(a->h() + b->h(), 700);
+  EXPECT_EQ(a->h() + b->h(), 600);
   b->hide_panel();
   EXPECT_TRUE(a->parent() == area);
-  EXPECT_EQ(a->h(), 700);
+  EXPECT_EQ(a->h(), 600);
   return true;
 }
 
@@ -377,7 +377,7 @@ TEST(Dock, StackedAcrossAPart) {
   EXPECT_TRUE(a->parent() == along);
   b->hide_panel();
   EXPECT_TRUE(a->parent() == area);
-  EXPECT_EQ(a->h(), 700);
+  EXPECT_EQ(a->h(), 600);
   return true;
 }
 
@@ -387,12 +387,12 @@ TEST(Dock, ShrinksInASmallWindow) {
   Fl_Dockable_Panel *r = make_panel("R", 300, 100, area->add_place("R", FL_DOCKABLE_RIGHT));
   l->show_panel();
   r->show_panel();
-  area->resize(0, 0, 450, 700);
+  area->resize(0, 0, 450, 600);
   // Each keeps its share, and its place keeps its width for when there is room
   EXPECT_EQ(l->w(), r->w());
   EXPECT_TRUE(l->w() + r->w() <= 450 - 50);
   EXPECT_EQ(l->place()->width, 300);
-  area->resize(0, 0, 1000, 700);
+  area->resize(0, 0, 1000, 600);
   EXPECT_EQ(l->w(), 300);
   return true;
 }
@@ -705,9 +705,9 @@ TEST(Layout, TextRoundTrip) {
   EXPECT_EQ(a->float_w(), 300);
   EXPECT_EQ(a->float_h(), 400);
   // Too small a buffer gets what fits and the whole length
-  char small[16];
-  EXPECT_EQ(area->write_layout(small, sizeof(small)), n);
-  EXPECT_EQ((int)strlen(small), 15);
+  char cut[16];
+  EXPECT_EQ(area->write_layout(cut, sizeof(cut)), n);
+  EXPECT_EQ((int)strlen(cut), 15);
   return true;
 }
 
@@ -858,7 +858,7 @@ TEST(Stripe, ShowEmpty) {
   EXPECT_EQ(area->stripe_options(), FL_DOCKABLE_STRIPE_SHOW_EMPTY);
   EXPECT_EQ(view->x(), t);
   EXPECT_EQ(view->w(), 1000 - 2 * t);
-  EXPECT_EQ(view->h(), 700 - 2 * t);
+  EXPECT_EQ(view->h(), 600 - 2 * t);
   area->stripe_options(0);
   EXPECT_EQ(view->w(), 1000);
   return true;
@@ -866,7 +866,7 @@ TEST(Stripe, ShowEmpty) {
 
 TEST(Stripe, AutoHideSlidesOutAndAway) {
   setup();
-  Fl_Dockable_Layer *layer = new Fl_Dockable_Layer(0, 0, 1000, 700);
+  Fl_Dockable_Layer *layer = new Fl_Dockable_Layer(0, 0, 1000, 600);
   win->add(layer);
   area->captive_layer(layer);
   EXPECT_TRUE(area->captive_layer() == layer);
@@ -993,10 +993,10 @@ TEST(Panel, BodyResized) {
   Resize_Panel *p = new Resize_Panel;
   p->show_panel();
   resizes = 0;
-  win->size(1000, 600);
+  win->size(1000, 500);
   Fl::check();
   EXPECT_TRUE(resizes > 0);
-  EXPECT_EQ(p->h(), 600);
+  EXPECT_EQ(p->h(), 500);
   return true;
 }
 
