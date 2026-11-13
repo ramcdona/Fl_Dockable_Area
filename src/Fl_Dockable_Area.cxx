@@ -1846,7 +1846,8 @@ void Fl_Dockable_Area::payload_cb(Fl_Widget *target, Fl_Dockable_Group *dockable
   if (part && kind == FL_DOCKABLE_HINT_STRIPE && d) {
     // Dropped on a stripe: its button goes there, and it auto-hides
     Fl_Dockable_Stripe *sp = (Fl_Dockable_Stripe *)part;
-    int X, Y;
+    int X = 0;
+    int Y = 0;
     int s = area->stripe_at(Fl::event_x_root(), Fl::event_y_root(), X, Y);
     int stripe = FL_DOCKABLE_RIGHT;
     for (int k = 0; k < FL_DOCKABLE_NUM_SIDES; k++) {
