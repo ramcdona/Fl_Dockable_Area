@@ -31,7 +31,8 @@ between it and an application: it decides where panels go.
 ## Requirements
 
 - FLTK 1.5 or later with `Fl_Dockable_Group` and `Fl_Dockable_Group::captive()`,
-  which are not yet part of an FLTK release.
+  which are not yet part of an FLTK release; the `dock-undock` branch of
+  https://github.com/ramcdona/fltk has them.
 - CMake 3.15 or later.
 - A C++11 compiler.
 

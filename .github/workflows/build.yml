@@ -3,7 +3,8 @@ name: Build and Test
 # Builds FLTK, then Fl_Dockable_Area against it, and runs the unit tests.
 # Fl_Dockable_Area needs an FLTK with Fl_Dockable_Group and
 # Fl_Dockable_Group::captive(), which are not yet part of an FLTK release:
-# FLTK_REPOSITORY and FLTK_BRANCH name one that has them.
+# FLTK_REPOSITORY and FLTK_BRANCH name one that has them, by default the
+# dock-undock branch of ramcdona/fltk.
 
 on:
   push:
@@ -19,8 +20,8 @@ on:
 
 env:
   BUILD_TYPE: Release
-  FLTK_REPOSITORY: ${{ github.event.inputs.fltk_repository || vars.FLTK_REPOSITORY || 'fltk/fltk' }}
-  FLTK_BRANCH: ${{ github.event.inputs.fltk_branch || vars.FLTK_BRANCH || 'master' }}
+  FLTK_REPOSITORY: ${{ github.event.inputs.fltk_repository || vars.FLTK_REPOSITORY || 'ramcdona/fltk' }}
+  FLTK_BRANCH: ${{ github.event.inputs.fltk_branch || vars.FLTK_BRANCH || 'dock-undock' }}
 
 permissions:
   contents: read
