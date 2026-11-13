@@ -1,0 +1,16 @@
+/**
+
+\mainpage Fl_Dockable_Area Programming Manual
+
+Fl_Dockable_Area is a library of docking panels for the Fast Light Tool Kit
+(FLTK).  It is a middle layer between FLTK's Fl_Dockable_Group, which moves a
+group out of its window and back, and an application: it docks panels along
+the borders of a center widget, as tabs and in stacks, floats them, puts them
+on stripes, and saves and restores where they are.
+
+  - \subpage intro
+  - \subpage guide
+  - \subpage design
+  - \subpage license
+
+*/

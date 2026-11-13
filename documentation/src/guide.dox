@@ -1,0 +1,210 @@
+/**
+
+\page guide Programming Guide
+
+This page goes through what an application does with an area, in the order
+it does it.  The demo, test/dockable_area.cxx, does all of it.
+
+\section guide_area The area and its center
+
+\code
+Fl_Double_Window *win = new Fl_Double_Window(1200, 800, "Example");
+Fl_Menu_Bar *menu = new Fl_Menu_Bar(0, 0, 1200, 25);
+win->end();
+Fl_Group::current(0);
+Fl_Widget *view = new My_View(0, 0, 10, 10);
+Fl_Dockable_Area *area = new Fl_Dockable_Area(0, 25, 1200, 775, view);
+win->add(area);
+win->resizable(area);
+\endcode
+
+The area takes the center as a child and places it; the center's own
+position and size do not matter.  The area does not become the current
+group, as it holds only the center and the panels docked in it.
+Fl_Dockable_Area::min_center() sets the size the center keeps: a panel that
+would leave it less floats instead (Fl_Dockable_Area::fits()).
+Fl_Dockable_Area::dock_band() sets the width of the band of the center along
+each border over which a dragged panel docks.
+
+\section guide_layer Floating inside the window
+
+Panels float in windows of their own unless the area has a captive layer, a
+group over the area in the same window holding the windows of panels that
+float inside it:
+
+\code
+Fl_Dockable_Layer *layer = new Fl_Dockable_Layer(0, 25, 1200, 775);
+win->add(layer);
+area->captive_layer(layer);
+\endcode
+
+The layer keeps its windows inside it as it is resized, and lets events
+elsewhere in it through to the area.  Under Wayland FLTK floats every panel
+in a window of its own.
+
+\section guide_places Places
+
+A place says where its panels show.  Fl_Dockable_Area::add_place() makes one,
+named for saving, along a side, at an order along that side:
+
+\code
+Fl_Dockable_Place *files = area->add_place("Files", FL_DOCKABLE_LEFT, 0);
+Fl_Dockable_Place *props = area->add_place("Properties", FL_DOCKABLE_RIGHT, 0);
+Fl_Dockable_Place *outline = area->add_place("Outline", FL_DOCKABLE_RIGHT, 0);
+outline->sub = 1;      // stacked below Properties
+\endcode
+
+Its fields may be set before its panel is first shown; the area changes them
+as the user moves panels:
+
+  - side and order: the border and the place along it.  Places with the same
+    side and order share one docked place.
+  - sub and extent: the order and size along a stack in that place.  Places
+    that also have the same sub are tabs.
+  - cross and cross_extent: the order and size across a part of a stack;
+    places with the same side, order and sub but different cross stand side
+    by side in that part.
+  - width and height: the size across the side, 0 for the panel's own.
+  - docked: whether it docks when shown; otherwise it floats, at float_x,
+    float_y if float_set is true, captive if float_captive is true.
+  - stripe and stripe_order: the stripe its button is on, or -1, and where.
+  - auto_hide: whether it slides out from its button.
+  - shown: whether it was shown as the layout was saved.
+
+Panels that share one place object take turns in it: showing one hides the
+one shown there, as the editors of different kinds of object might.
+After changing the size of a docked place, Fl_Dockable_Area::relayout() lays
+the area out again.
+
+\section guide_panels Panels
+
+\code
+Fl_Dockable_Panel *p = new Fl_Dockable_Panel(area, 220, 400, "Files", files);
+p->begin_body();
+Fl_Browser *b = new Fl_Browser(0, 0, 220, 400);
+p->end_body();
+p->body()->resizable(b);
+\endcode
+
+A panel is a title bar above a body; widgets made between
+Fl_Dockable_Panel::begin_body() and end_body() go in the body, placed
+relative to its corner.  A window the application built may be adopted
+instead: Fl_Dockable_Panel::adopt() moves its widgets into the body.  A panel
+made without a place gets one of its own, named by its title.  Its name, the
+title unless Fl_Dockable_Panel::name() sets it, is the key its sizes are
+saved under.  Fl_Dockable_Panel::title() changes what its title bar, tab,
+stripe button, window and the panel menu show.
+
+Fl_Dockable_Panel::show_panel() shows a panel as its place says, and
+hide_panel() hides it.  An application moves it with dock_panel(),
+dock_on(), float_panel() and float_as(); each tells the area's callback, as
+the user's moves do.  Fl_Dockable_Panel::docked() and panel_shown() say where
+it is.
+
+\section guide_requests The application's own code
+
+The user asks for a panel to be opened, hidden or closed; the panel asks the
+application through virtual functions an application overrides:
+
+\code
+class Notes_Panel : public Fl_Dockable_Panel {
+  void close_request() override {
+    if (fl_choice("Close the notes?", "Keep", "Close", 0) == 1) hide_panel();
+  }
+};
+\endcode
+
+  - Fl_Dockable_Panel::close_request(): the close button, its window's close
+    button, or the title bar's menu.
+  - Fl_Dockable_Panel::open_request(): a stripe button, the panel menu, a
+    shortcut, or a layout being reset or shown.
+  - Fl_Dockable_Panel::hide_request(): a stripe button, the panel menu, a
+    shortcut, or the area hiding it.
+  - Fl_Dockable_Panel::body_resized(): after the body changes size.
+
+The defaults show or hide the panel.  What the user may do with a panel is
+set by Fl_Dockable_Panel::dock_flags(), Fl_Dockable_Flags or'ed together:
+closing, floating, and moving it.
+
+\section guide_stripes Stripes and auto-hide
+
+A panel whose place has a stripe has a button on it, which shows and hides
+the panel; Fl_Dockable_Panel::show_button() gives it one or takes it away,
+and Fl_Dockable_Panel::dock_icon() puts an icon on it.  An auto-hidden panel,
+Fl_Dockable_Panel::auto_hide(), slides out from its button over the center
+and away again when the user clicks elsewhere or presses Escape;
+Fl_Dockable_Panel::pin() puts it back where it was.
+Fl_Dockable_Area::stripe_options() sets how the stripes behave: a click on
+the button of a panel shown without the keyboard focus can give it the focus
+first, and empty stripes can be shown, as places to drop panels.
+
+\section guide_keys Keys and menus
+
+Fl_Dockable_Panel::dock_shortcut() sets a key that shows and hides a panel
+from any of the application's windows.  Fl_Dockable_Area::panel_menu() lists
+every panel in a menu, each checked while it is shown.
+Fl_Dockable_Area::maximize() gives one docked place the whole area, and
+Fl_Dockable_Area::hide_docked() hides every docked panel so the center has
+the whole area, or shows them again.
+
+\section guide_callback What the user did
+
+The area's callback is called for what the user does, with
+Fl::callback_reason() set and Fl_Dockable_Area::callback_panel() returning
+the panel, or 0:
+
+  - FL_REASON_DRAGGED: the user moved a panel, docked it, floated it, gave it
+    a button or took it away, auto-hid or pinned it.
+  - FL_REASON_CLOSED: the user hid a panel.
+  - FL_REASON_OPENED: the user showed a panel.
+  - FL_REASON_CHANGED: the user resized something, or maximized a panel or
+    put it back.
+
+An application that saves its layout as it changes saves on every call.
+
+\section guide_layouts Layouts
+
+\code
+area->save_defaults();                      // the default layout, for reset_layout()
+Fl_Preferences prefs(Fl_Preferences::USER_L, "example.org", "example");
+if (!area->load_layout(prefs)) files->shown = true;
+area->callback(save_cb);
+win->show();
+area->show_saved();
+\endcode
+
+  - Fl_Dockable_Area::save_defaults() keeps the places as the default, and
+    reset_layout() brings it back.
+  - save_layout() and load_layout() write and read every place in an
+    Fl_Preferences group; with a name, a layout of that name in it.
+    load_layout() is called before the panels are first shown, and
+    show_saved() shows those shown when it was saved.
+  - write_layout() and read_layout() do the same with text.
+  - Values out of range keep the place's own, so a damaged layout cannot put
+    a panel out of reach.
+
+A layout may name a place whose panel the application has not made, as for
+panels made only when first needed.  Fl_Dockable_Area::panel_factory() sets
+the function that makes it when Fl_Dockable_Area::show_place() or a layout
+first shows the place.
+
+\section guide_events Events
+
+The area puts a function in front of Fl::event_dispatch(), and takes it away
+when the last area is deleted.  An application that sets its own event
+dispatch after making an area must call Fl_Dockable_Area::dispatch() from it.
+
+\section guide_lifetime Lifetime
+
+The area deletes the panels docked in it with itself.  A panel floating or
+hidden is the application's to delete, and after the area is gone it does
+nothing but hide.  Deleting a panel takes it out of the area.
+
+\section guide_dumps Drawing a panel alone
+
+Fl_Dockable_Panel::lend_body() lends the body's widgets to another group,
+such as the window the application built them in, placed as they were built,
+so the application can draw them there alone, as for a screen dump;
+take_back_body() takes them back.
+
+*/

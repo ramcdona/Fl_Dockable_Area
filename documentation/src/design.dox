@@ -1,0 +1,84 @@
+/**
+
+\page design How it works
+
+\section design_layers Layers
+
+  - FLTK's Fl_Dockable_Group moves a group out of its window into a window
+    FLTK makes for it, floats it, and tells docking targets about it as it is
+    dragged and dropped (the FL_DOCK_ENTER, FL_DOCK_DRAG, FL_DOCK_LEAVE,
+    FL_DOCK_RELEASE and FL_UNDOCK events, and
+    Fl_Dockable_Group::handle_docking_target()).  It is the only part that
+    talks to the window system, so Wayland's toplevel drag works through it.
+  - This library decides where a panel goes: places along the borders of a
+    center, tabs, stacks, captive floating windows, stripes, maximize, and the
+    layout as data.
+
+\section design_classes Classes
+
+  - Fl_Dockable_Area, an Fl_Tile: the center, the docked places in a list per
+    side, the four stripes, and a placeholder or hint box while a panel is
+    dragged over it.  It is the docking target for panels.
+  - Fl_Dockable_Panel, an Fl_Dockable_Group: a title bar above a body group
+    holding the application's widgets.  The title bar is the group's drag
+    widget.  In tabs the title bar is hidden and the tab drags the panel.
+  - Tab groups (Fl_Tabs) and stacks (Fl_Tile), made and deleted by the area
+    as panels join and leave a place.  A stack along a place holds panels,
+    tabs, or stacks across it; a stack across holds panels or tabs.
+  - Stripes: buttons along a border.
+  - Fl_Dockable_Layer: a group over the area holding only captive floating
+    windows; events elsewhere in it fall through to the area.
+
+The tab groups, stacks, stripes and title bars are the area's own and not
+part of the interface.
+
+\section design_places Places
+
+Every panel has an Fl_Dockable_Place, which outlives the panel's being shown:
+side, order along the side, size across the side, sub (order along a stack in
+the place) and extent, cross (order across a part of the stack) and cross
+extent, docked or floating, floating position, stripe and stripe order,
+auto-hide, and shown.  Places with the same side and order share one docked
+place; with the same sub too they share a part of its stack; with the same
+cross too they are tabs.  Panels that share one place object take turns:
+showing one hides the other.
+
+When the user moves a panel, its place takes an order (or sub, or cross) no
+other place on that side has, docked or not, so a hidden panel shown later
+does not join it as a tab.
+
+\section design_layout Layout
+
+Fl_Dockable_Area::relayout() gives the stripes with buttons the area's edges,
+then the columns at the left and right the full height inside them and the
+rows at the top and bottom the center's width.  The center takes what is
+left, never less than its minimum.  In a window too small for them the docked
+places shrink in proportion; their places keep their sizes for when there is
+room.  A maximized place takes everything; the others are hidden, and the
+center is moved a pixel outside the area rather than hidden, as hiding an
+OpenGL window loses its context on some systems.
+
+Sizes the user drags borders to are written back to the places as the drag
+ends, but not while a place is maximized or the docked places are shrunk.
+
+\section design_subwindows Subwindows
+
+A shown subwindow, such as an Fl_Gl_Window, cannot move to another window on
+macOS, and a visible subwindow of a window not shown cannot be resized.  A
+panel hides its subwindows before it changes window or is resized outside a
+shown window, and shows them again after.
+
+\section design_events Events
+
+The area puts a function in front of Fl::event_dispatch(): a click anywhere
+but on a panel slid out from a stripe, or its button, slides it away, and
+Escape does too.  A panel's dock_shortcut() works from any of the
+application's windows through an Fl::add_handler() function.
+
+\section design_application What the application provides
+
+Places, panels and the default layout; the captive layer, if panels should
+float inside its window; its own code for opening, hiding and closing a
+panel; and saving the layout when the area's callback says it changed.
+
+*/

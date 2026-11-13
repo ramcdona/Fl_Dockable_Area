@@ -1,0 +1,66 @@
+/**
+
+\page intro Introduction
+
+\section intro_what What it is
+
+An Fl_Dockable_Area holds a center widget, such as a 3D view, and docks
+Fl_Dockable_Panel groups along its four borders: columns at the left and
+right, rows at the top and bottom.  The user drags a panel by its title bar to
+dock it elsewhere, to join another panel as a tab, to stack it with another,
+or to float it, inside the application's window or in a window of its own.
+Stripes along the borders hold buttons that show and hide panels, and a panel
+may auto-hide, sliding out from its button over the center.  The application
+says where each panel goes by default, hears what the user does through the
+area's callback, and saves and restores the layout.
+
+Dragging a panel out of its window and back is the work of FLTK's
+Fl_Dockable_Group, so it works wherever FLTK's does, Wayland included.  This
+library decides where a panel goes.
+
+\section intro_requirements Requirements
+
+  - FLTK 1.5 or later, with Fl_Dockable_Group and Fl_Dockable_Group::captive().
+  - CMake 3.15 or later.
+  - A C++11 compiler.
+
+\section intro_building Building and installing
+
+\code
+cmake -S . -B build -D CMAKE_PREFIX_PATH=<FLTK install> -D CMAKE_INSTALL_PREFIX=<install>
+cmake --build build
+ctest --test-dir build
+cmake --install build
+\endcode
+
+The library builds as fltk_dockable_area, static unless BUILD_SHARED_LIBS is
+set.  These CMake options change what is built:
+
+  - FL_DOCKABLE_AREA_BUILD_TEST (ON): the unit tests and the demo program,
+    test/dockable_area.cxx.  The tests open windows, so they need a display.
+  - FL_DOCKABLE_AREA_BUILD_HTML_DOCS (OFF): this manual, made with Doxygen by
+    the target html.
+  - FL_DOCKABLE_AREA_INSTALL_HTML_DOCS (OFF): install the manual too.
+
+\section intro_using Using it from another project
+
+The installed package, and the build tree, are found by CMake:
+
+\code
+find_package(Fl_Dockable_Area CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE fltk::dockable_area)
+\endcode
+
+An application includes FL/Fl_Dockable_Area.H, FL/Fl_Dockable_Panel.H and,
+for panels floating inside its window, FL/Fl_Dockable_Layer.H.
+
+\section intro_version Version
+
+FL/Fl_Dockable_Version.H gives the version as FL_DOCKABLE_AREA_MAJOR_VERSION,
+FL_DOCKABLE_AREA_MINOR_VERSION and FL_DOCKABLE_AREA_PATCH_VERSION, and as one
+number, FL_DOCKABLE_AREA_API_VERSION.  Fl_Dockable_Area::api_version() returns
+the version of the library linked, to compare with the headers'.  A change of
+the minor version keeps code built for an earlier one working; the CMake
+package accepts a request for the same major and minor version.
+
+*/

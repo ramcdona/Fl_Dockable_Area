@@ -23,6 +23,8 @@ project(Fl_Dockable_Area VERSION ${FL_DOCKABLE_MAJOR}.${FL_DOCKABLE_MINOR}.${FL_
   LANGUAGES C CXX)
 
 option(FL_DOCKABLE_AREA_BUILD_TEST "Build the test programs" ON)
+option(FL_DOCKABLE_AREA_BUILD_HTML_DOCS "Build the HTML manual with Doxygen (target html)" OFF)
+option(FL_DOCKABLE_AREA_INSTALL_HTML_DOCS "Install the HTML manual" OFF)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -112,4 +114,9 @@ install(FILES
 if(FL_DOCKABLE_AREA_BUILD_TEST)
   enable_testing()
   add_subdirectory(test)
+endif()
+
+if(FL_DOCKABLE_AREA_BUILD_HTML_DOCS)
+  find_package(Doxygen REQUIRED)
+  add_subdirectory(documentation)
 endif()

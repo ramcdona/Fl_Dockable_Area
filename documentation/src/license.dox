@@ -1,0 +1,11 @@
+/**
+
+\page license Software License
+
+Fl_Dockable_Area is distributed under the license of FLTK, the GNU Library
+General Public License with the exceptions that follow it, in the file
+COPYING:
+
+\verbinclude COPYING
+
+*/
