@@ -1,0 +1,34 @@
+Changes in Fl_Dockable_Area 0.1.0                        Released: not yet released
+
+  The first release.
+
+  Features
+  - Fl_Dockable_Area: a center widget with panels docked along its four
+    borders, as columns at the left and right and rows at the top and bottom.
+  - Fl_Dockable_Panel: a title bar above a body holding the application's
+    widgets; dragged by its title bar, it docks along a border, joins another
+    panel as a tab, stacks before or after it, or across a part of a stack,
+    or floats.
+  - Floating inside the application's window, over an Fl_Dockable_Layer, or
+    in a window of its own; Ctrl floats a panel where it is dropped.
+  - Stripes along the borders with a button for each panel given one, an icon
+    on it if the panel has one; panels that auto-hide, sliding out from their
+    buttons, and stripe options for the keyboard focus and empty stripes.
+  - A title bar menu to dock along any border, float, auto-hide, give a
+    stripe button, maximize and close a panel.
+  - Places that panels take turns in, panel flags, a key per panel, a menu
+    listing the panels, maximize, and hiding every docked panel at once.
+  - Virtual functions through which the application opens, hides and closes
+    panels, and a callback with the reason for what the user did.
+  - Layouts saved to and read from Fl_Preferences, named or not, or as text;
+    a default layout to reset to; a factory for panels made when first shown.
+  - Docked panels keep their sizes and shrink in proportion in a window too
+    small for them; panels holding subwindows, such as OpenGL views, move
+    between windows.
+
+  Build
+  - CMake 3.15, C++11 and FLTK 1.5 with Fl_Dockable_Group and
+    Fl_Dockable_Group::captive().
+  - A CMake package, fltk::dockable_area, in the install and the build tree.
+  - The version in FL/Fl_Dockable_Version.H and Fl_Dockable_Area::api_version().
+  - Unit tests run by CTest, a demo program, and a Doxygen manual.
