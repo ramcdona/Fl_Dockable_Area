@@ -1,0 +1,189 @@
+name: Build and Test
+
+# Builds FLTK, then Fl_Dockable_Area against it, and runs the unit tests.
+# Fl_Dockable_Area needs an FLTK with Fl_Dockable_Group and
+# Fl_Dockable_Group::captive(), which are not yet part of an FLTK release:
+# FLTK_REPOSITORY and FLTK_BRANCH name one that has them.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      fltk_repository:
+        description: 'FLTK repository (owner/name) with Fl_Dockable_Group'
+        required: false
+      fltk_branch:
+        description: 'Branch of that repository'
+        required: false
+
+env:
+  BUILD_TYPE: Release
+  FLTK_REPOSITORY: ${{ github.event.inputs.fltk_repository || vars.FLTK_REPOSITORY || 'fltk/fltk' }}
+  FLTK_BRANCH: ${{ github.event.inputs.fltk_branch || vars.FLTK_BRANCH || 'master' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install prerequisites
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+        libglu1-mesa-dev \
+        libx11-dev \
+        libxcursor-dev \
+        libxft-dev \
+        libxinerama-dev \
+        libxfixes-dev \
+        libxrender-dev \
+        ninja-build \
+        xvfb
+
+    - name: Build FLTK
+      shell: bash
+      run: |
+        git clone --depth 1 --branch "$FLTK_BRANCH" "https://github.com/$FLTK_REPOSITORY.git" fltk-src
+        cmake -S fltk-src -B fltk-build -G Ninja \
+          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -D CMAKE_INSTALL_PREFIX=${{github.workspace}}/fltk-install \
+          -D FLTK_BACKEND_WAYLAND=OFF \
+          -D FLTK_BUILD_TEST=OFF \
+          -D FLTK_BUILD_FLUID=OFF \
+          -D FLTK_BUILD_FLTK_OPTIONS=OFF
+        cmake --build fltk-build
+        cmake --install fltk-build
+
+    - name: Configure
+      shell: bash
+      run: |
+        cmake -S . -B build -G Ninja \
+          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -D CMAKE_PREFIX_PATH=${{github.workspace}}/fltk-install \
+          -D CMAKE_CXX_FLAGS="-Wall -Wextra -Wno-unused-parameter -Werror"
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Test
+      run: xvfb-run -a ctest --test-dir build --output-on-failure
+
+  build-wayland:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install prerequisites
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+        libglu1-mesa-dev \
+        libcairo2-dev \
+        libwayland-dev \
+        wayland-protocols \
+        libdbus-1-dev \
+        libxkbcommon-dev \
+        libegl-dev \
+        libopengl-dev \
+        libpango1.0-dev \
+        libdecor-0-dev \
+        libxfixes-dev \
+        libxcursor-dev \
+        libxinerama-dev \
+        ninja-build
+
+    - name: Build FLTK
+      shell: bash
+      run: |
+        git clone --depth 1 --branch "$FLTK_BRANCH" "https://github.com/$FLTK_REPOSITORY.git" fltk-src
+        cmake -S fltk-src -B fltk-build -G Ninja \
+          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -D CMAKE_INSTALL_PREFIX=${{github.workspace}}/fltk-install \
+          -D FLTK_BUILD_TEST=OFF \
+          -D FLTK_BUILD_FLUID=OFF \
+          -D FLTK_BUILD_FLTK_OPTIONS=OFF
+        cmake --build fltk-build
+        cmake --install fltk-build
+
+    - name: Configure
+      shell: bash
+      run: |
+        cmake -S . -B build -G Ninja \
+          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -D CMAKE_PREFIX_PATH=${{github.workspace}}/fltk-install
+
+    # Built only: the runner has no Wayland compositor to run the tests in
+    - name: Build
+      run: cmake --build build
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build FLTK
+      shell: bash
+      run: |
+        git clone --depth 1 --branch "$FLTK_BRANCH" "https://github.com/$FLTK_REPOSITORY.git" fltk-src
+        cmake -S fltk-src -B fltk-build \
+          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -D CMAKE_INSTALL_PREFIX=${{github.workspace}}/fltk-install \
+          -D FLTK_BUILD_TEST=OFF \
+          -D FLTK_BUILD_FLUID=OFF \
+          -D FLTK_BUILD_FLTK_OPTIONS=OFF
+        cmake --build fltk-build --parallel
+        cmake --install fltk-build
+
+    - name: Configure
+      shell: bash
+      run: |
+        cmake -S . -B build \
+          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -D CMAKE_PREFIX_PATH=${{github.workspace}}/fltk-install \
+          -D CMAKE_CXX_FLAGS="-Wall -Wextra -Wno-unused-parameter -Werror"
+
+    - name: Build
+      run: cmake --build build --parallel
+
+    - name: Test
+      run: ctest --test-dir build --output-on-failure
+
+  build-windows-msvc:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build FLTK
+      shell: bash
+      run: |
+        git clone --depth 1 --branch "$FLTK_BRANCH" "https://github.com/$FLTK_REPOSITORY.git" fltk-src
+        cmake -S fltk-src -B fltk-build \
+          -D CMAKE_INSTALL_PREFIX="${{github.workspace}}/fltk-install" \
+          -D FLTK_BUILD_TEST=OFF \
+          -D FLTK_BUILD_FLUID=OFF \
+          -D FLTK_BUILD_FLTK_OPTIONS=OFF
+        cmake --build fltk-build --config $BUILD_TYPE
+        cmake --install fltk-build --config $BUILD_TYPE
+
+    - name: Configure
+      shell: bash
+      run: |
+        cmake -S . -B build \
+          -D CMAKE_PREFIX_PATH="${{github.workspace}}/fltk-install"
+
+    - name: Build
+      shell: bash
+      run: cmake --build build --config $BUILD_TYPE
+
+    - name: Test
+      shell: bash
+      run: ctest --test-dir build -C $BUILD_TYPE --output-on-failure
