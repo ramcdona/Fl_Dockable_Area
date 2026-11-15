@@ -1749,6 +1749,13 @@ void Fl_Dockable_Area::remove_place_holder() {
     columns_[side].erase(std::find(columns_[side].begin(), columns_[side].end(), place_holder_));
   }
   forget_hidden(place_holder_);
+  // Where it was is drawn again by the window: the parts there, such as the free end of a tab bar,
+  // need not draw a background of their own
+  Fl_Window *win = window();
+  if (win) {
+    win->damage(FL_DAMAGE_ALL, place_holder_->x(), place_holder_->y(), place_holder_->w(),
+                place_holder_->h());
+  }
   remove(place_holder_);
   Fl::delete_widget(place_holder_);
   place_holder_ = nullptr;
