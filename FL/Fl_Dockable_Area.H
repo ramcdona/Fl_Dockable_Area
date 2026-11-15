@@ -26,6 +26,7 @@ class Fl_Box;
 class Fl_Menu_;
 class Fl_Preferences;
 class Fl_Dockable_Panel;
+class Fl_Dockable_Holder;
 class Fl_Dockable_Tabs;
 class Fl_Dockable_Stack;
 class Fl_Dockable_Stripe;
@@ -258,6 +259,11 @@ public:
   void relayout();
 
   static int dispatch(int event, Fl_Window *w);
+  static int dispatch_on(int event, Fl_Window *w);
+  void raise_after(int event);
+  bool holder_on_top(Fl_Window *h) const;
+  Fl_Dockable_Holder *holder_at(int X, int Y) const;
+  static void raise_cb(void *data);
   int key_pressed();
 
   static int api_version();
@@ -354,6 +360,9 @@ private:
   // A panel dragged over the area away from its dock zones floats captive where it is dropped, at
   // the place and size its window had
   bool captive_drop_;
+  // The holder last pressed in, and the one to bring above the others
+  Fl_Widget_Tracker *clicked_;
+  Fl_Widget_Tracker *to_raise_;
   int drop_x_;
   int drop_y_;
   int drop_w_;

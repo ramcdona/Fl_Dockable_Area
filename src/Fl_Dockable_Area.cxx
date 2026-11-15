@@ -93,6 +93,15 @@ int Fl_Dockable_Area::dispatch(int event, Fl_Window *w) {
       s_areas[i]->pushed_at(w);
     }
   }
+  int r = dispatch_on(event, w);
+  for (size_t i = 0; i < s_areas.size(); i++) {
+    s_areas[i]->raise_after(event);
+  }
+  return r;
+}
+
+// The event goes on to the application's dispatch, or FLTK's
+int Fl_Dockable_Area::dispatch_on(int event, Fl_Window *w) {
   // Escape slides a panel slid out away, before any widget takes the key
   if (event == FL_KEYBOARD && Fl::event_key() == FL_Escape && !Fl::grab() && !Fl::modal()) {
     for (size_t i = 0; i < s_areas.size(); i++) {
@@ -144,6 +153,8 @@ Fl_Dockable_Area::Fl_Dockable_Area(int X, int Y, int W, int H, Fl_Widget *center
   maximized_ = 0;
   captive_ = 0;
   captive_drop_ = false;
+  clicked_ = 0;
+  to_raise_ = 0;
   drop_x_ = 0;
   drop_y_ = 0;
   drop_w_ = 0;
@@ -628,6 +639,120 @@ void Fl_Dockable_Area::raise_captive() {
   }
 }
 
+// Tracks w, or nothing
+static void track(Fl_Widget_Tracker *&t, Fl_Widget *w) {
+  delete t;
+  t = 0;
+  if (w) {
+    t = new Fl_Widget_Tracker(w);
+  }
+}
+
+// The holder a tracker tracks, if it is still there
+static Fl_Dockable_Holder *tracked_holder(Fl_Widget_Tracker *t) {
+  if (!t) {
+    return nullptr;
+  }
+  return dynamic_cast<Fl_Dockable_Holder *>(t->widget());
+}
+
+// The holder a widget is in, if it is in one
+static Fl_Dockable_Holder *holder_of(Fl_Widget *w) {
+  for (Fl_Widget *p = w; p; p = p->parent()) {
+    Fl_Dockable_Holder *h = dynamic_cast<Fl_Dockable_Holder *>(p);
+    if (h) {
+      return h;
+    }
+  }
+  return nullptr;
+}
+
+// The holder drawn at a point of the screen, the one on top where they overlap, even where no
+// widget in it takes the mouse
+Fl_Dockable_Holder *Fl_Dockable_Area::holder_at(int X, int Y) const {
+  if (!captive_) {
+    return nullptr;
+  }
+  for (int i = captive_->children() - 1; i >= 0; i--) {
+    Fl_Dockable_Holder *h = dynamic_cast<Fl_Dockable_Holder *>(captive_->child(i));
+    if (h && h->shown() && h->visible() && X >= h->x_root() && X < h->x_root() + h->w() &&
+        Y >= h->y_root() && Y < h->y_root() + h->h()) {
+      return h;
+    }
+  }
+  return nullptr;
+}
+
+// Whether a holder is drawn above the others: the last one shown in the layer, as they are shown
+// in its order
+bool Fl_Dockable_Area::holder_on_top(Fl_Window *h) const {
+  for (int i = captive_->children() - 1; i >= 0; i--) {
+    Fl_Window *c = captive_->child(i)->as_window();
+    if (c && c->shown() && c->visible()) {
+      return c == h;
+    }
+  }
+  return true;
+}
+
+// After an event: a panel floating captive that was just clicked, or that a key went to, is
+// brought above the others once the mouse buttons are up, as a window of its own would be.  A
+// panel only left with the focus stays where it is, under one dropped over it.
+void Fl_Dockable_Area::raise_after(int event) {
+  if (!captive_) {
+    return;
+  }
+  if (event == FL_PUSH) {
+    track(clicked_, holder_at(Fl::event_x_root(), Fl::event_y_root()));
+  }
+  if (Fl::event_buttons() || Fl::grab() || Fl::modal()) {
+    return;
+  }
+  Fl_Dockable_Holder *h = nullptr;
+  if (event == FL_RELEASE) {
+    h = tracked_holder(clicked_);
+    track(clicked_, 0);
+  } else if (event == FL_KEYBOARD) {
+    h = holder_of(Fl::focus());
+  }
+  if (h && h->parent() == captive_ && h->shown() && !holder_on_top(h)) {
+    track(to_raise_, h);
+    Fl::add_timeout(0.0, raise_cb, this);
+  }
+}
+
+// Outside the event, as hiding the window under the mouse would end a press there
+void Fl_Dockable_Area::raise_cb(void *data) {
+  Fl_Dockable_Area *area = (Fl_Dockable_Area *)data;
+  Fl_Dockable_Holder *h = tracked_holder(area->to_raise_);
+  track(area->to_raise_, 0);
+  if (!h || h->parent() != area->captive_ || !h->shown() || area->holder_on_top(h)) {
+    return;
+  }
+  // Last in the layer, which gives it the mouse first, and shown again, which draws it above the
+  // others.  Hiding it takes the focus away without telling the widget, so it is given back.
+  Fl_Widget_Tracker focus(Fl::focus());
+  Fl_Group *layer = area->captive_;
+  layer->remove(h);
+  layer->add(h);
+  Fl_Dockable_Panel *d = nullptr;
+  if (h->children() > 0) {
+    d = dynamic_cast<Fl_Dockable_Panel *>(h->child(0));
+  }
+  if (d) {
+    d->hide_subwindows();
+  }
+  h->hide();
+  h->show();
+  if (d) {
+    d->show_subwindows();
+  }
+  if (focus.widget() && Fl::focus() != focus.widget()) {
+    Fl::focus(focus.widget());
+    focus.widget()->redraw();
+  }
+}
+
 void Fl_Dockable_Area::slid_away(Fl_Dockable_Panel *d) {
   if (slid_ == d) {
     slid_ = nullptr;
@@ -672,6 +797,9 @@ void Fl_Dockable_Area::pushed_at(Fl_Window *w) {
 Fl_Dockable_Area::~Fl_Dockable_Area() {
   Fl_Dockable_Group::check_origin_target(this);
   Fl::remove_timeout(menu_timeout_cb, this);
+  Fl::remove_timeout(raise_cb, this);
+  track(clicked_, 0);
+  track(to_raise_, 0);
   if (menu_tracker_ && !menu_tracker_->deleted() && !panel_menu_path_.empty()) {
     int i = panel_menu_->find_index(panel_menu_path_.c_str());
     if (i >= 0) {
