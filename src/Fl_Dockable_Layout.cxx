@@ -300,13 +300,19 @@ int Fl_Dockable_Area::load_layout(Fl_Preferences &prefs, const char *name) {
   open_request(), docked ones first.
 */
 void Fl_Dockable_Area::show_saved() {
+  // The places to show are listed first: showing one tells the application, which may save the
+  // layout, and that notes the places not shown yet as hidden
+  std::vector<Fl_Dockable_Place *> show;
   for (int pass = 0; pass < 2; pass++) {
     for (size_t i = 0; i < places_.size(); i++) {
       Fl_Dockable_Place *p = places_[i];
       if (p->shown && p->docked == (pass == 0)) {
-        show_place(p);
+        show.push_back(p);
       }
     }
+  }
+  for (size_t i = 0; i < show.size(); i++) {
+    show_place(show[i]);
   }
 }
 
