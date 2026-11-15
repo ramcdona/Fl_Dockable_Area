@@ -350,6 +350,13 @@ private:
   Fl_Widget *maximized_;
   std::vector<Fl_Widget *> max_hidden_;
   Fl_Group *captive_;
+  // A panel dragged over the area away from its dock zones floats captive where it is dropped, at
+  // the place and size its window had
+  bool captive_drop_;
+  int drop_x_;
+  int drop_y_;
+  int drop_w_;
+  int drop_h_;
   // The places docked along each side, in order, the placeholder among them while the mouse is there
   std::vector<Fl_Widget *> columns_[FL_DOCKABLE_NUM_SIDES];
   Fl_Box *place_holder_;

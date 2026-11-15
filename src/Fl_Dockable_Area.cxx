@@ -143,6 +143,11 @@ Fl_Dockable_Area::Fl_Dockable_Area(int X, int Y, int W, int H, Fl_Widget *center
   all_stripes_ = false;
   maximized_ = 0;
   captive_ = 0;
+  captive_drop_ = false;
+  drop_x_ = 0;
+  drop_y_ = 0;
+  drop_w_ = 0;
+  drop_h_ = 0;
   place_holder_ = 0;
   tab_hint_ = 0;
   tab_with_ = 0;
@@ -312,9 +317,6 @@ void Fl_Dockable_Area::notify(Fl_Dockable_Panel *d, Fl_Callback_Reason reason) {
 
 void Fl_Dockable_Area::captive_layer(Fl_Group *g) {
   captive_ = g;
-  for (size_t i = 0; i < all_.size(); i++) {
-    all_[i]->captive(g);
-  }
 }
 
 /**
@@ -1771,6 +1773,17 @@ void Fl_Dockable_Area::remove_place_holder() {
 int Fl_Dockable_Area::handle(int event) {
   if (event == FL_DOCK_ENTER || event == FL_DOCK_DRAG || event == FL_DOCK_LEAVE ||
       event == FL_DOCK_RELEASE || event == FL_UNDOCK) {
+    // Where the window the panel is dragged in is, for one dropped to float captive there: FLTK
+    // deletes that window before the area is given the panel
+    Fl_Dockable_Group *dragged = Fl_Dockable_Group::active_dockable();
+    if ((event == FL_DOCK_ENTER || event == FL_DOCK_DRAG) && dragged && dragged->window() &&
+        !dragged->window()->parent()) {
+      Fl_Window *dw = dragged->window();
+      drop_x_ = dw->x_root();
+      drop_y_ = dw->y_root();
+      drop_w_ = dw->w();
+      drop_h_ = dw->h();
+    }
     bool processed = false;
     int r = Fl_Dockable_Group::handle_docking_target(
         processed, this, event, inside_cb, acceptable_cb, state_cb, payload_cb, undock_cb);
@@ -1790,6 +1803,11 @@ int Fl_Dockable_Area::handle(int event) {
         } else {
           show_place_holder(side, slot, room_for(d, side));
         }
+      } else if (d && d->state() == Fl_Dockable_Group::DOCK && captive_drop_) {
+        // Moved on from a dock zone to float captive: the area is still the target, so FLTK does
+        // not say the panel left it, and the hint goes here
+        remove_place_holder();
+        remove_tab_hint();
       }
     }
     if (processed) {
@@ -1815,6 +1833,7 @@ void Fl_Dockable_Area::borders_dragged() {
 // elsewhere over the center, or with Ctrl held, a panel floats
 bool Fl_Dockable_Area::inside_cb(Fl_Widget *target) {
   Fl_Dockable_Area *area = (Fl_Dockable_Area *)target;
+  area->captive_drop_ = false;
   if (!Fl_Dockable_Group::is_dockable_inside(target) || Fl::event_state(FL_CTRL)) {
     return false;
   }
@@ -1825,10 +1844,16 @@ bool Fl_Dockable_Area::inside_cb(Fl_Widget *target) {
   if (d && area->captive_ && area->stripe_at(Fl::event_x_root(), Fl::event_y_root(), X, Y) >= 0) {
     return true;
   }
-  if (!d || !area->hit_test(Fl::event_x_root(), Fl::event_y_root(), side, slot, part, kind)) {
-    return false;
+  if (d && area->hit_test(Fl::event_x_root(), Fl::event_y_root(), side, slot, part, kind) &&
+      (part || area->fits(d, side))) {
+    return true;
   }
-  return part || area->fits(d, side);
+  // Anywhere else over the area, a panel that can float docks floating captive, where it is dropped
+  if (d && area->captive_ && area->captive_->visible_r() && (d->dock_flags() & FL_DOCKABLE_FLOATABLE)) {
+    area->captive_drop_ = true;
+    return true;
+  }
+  return false;
 }
 
 bool Fl_Dockable_Area::acceptable_cb(Fl_Widget *target, Fl_Dockable_Group *dockable) {
@@ -1883,6 +1908,25 @@ void Fl_Dockable_Area::payload_cb(Fl_Widget *target, Fl_Dockable_Group *dockable
   area->remove_place_holder();
   area->remove_tab_hint();
   if (!d) {
+    return;
+  }
+  if (area->captive_drop_) {
+    // Floating captive in a holder where the window it was dragged in was dropped, at that
+    // window's size.  FLTK opened that window with its corner where the panel was, so the holder
+    // is a frame up and left, which puts the panel back where it was if it did not move.
+    area->captive_drop_ = false;
+    Fl_Window *top = area->window();
+    Fl_Dockable_Place *p = d->place();
+    int m = Fl_Dockable_Holder::margin();
+    p->docked = false;
+    p->float_set = true;
+    p->float_captive = true;
+    p->float_x = area->drop_x_ - top->x_root() - m;
+    p->float_y = area->drop_y_ - top->y_root() - m;
+    if (area->drop_w_ > 0 && area->drop_h_ > 0) {
+      d->float_size(area->drop_w_, area->drop_h_);
+    }
+    d->float_panel(p->float_x, p->float_y, true);
     return;
   }
   if (part && area->side_of(part) >= 0) {

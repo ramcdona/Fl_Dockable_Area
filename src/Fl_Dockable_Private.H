@@ -18,7 +18,30 @@
 #include "Fl_Dockable_Tabs.H"
 #include "Fl_Dockable_Stack.H"
 
+#include <FL/Fl_Double_Window.H>
+
 #include <vector>
+
+// The window a panel floats captive in: a subwindow of the area's captive layer, in which the panel
+// is docked, so FLTK undocks it to drag it as it undocks a panel from the area.  It sizes from its
+// edges, and goes when the panel is dragged out of it.
+class Fl_Dockable_Holder : public Fl_Double_Window {
+public:
+  Fl_Dockable_Holder(int X, int Y, int W, int H);
+  int handle(int event) override;
+  static int margin();
+private:
+  int edge_;       // The edges the mouse would size the window by, or 0
+  int sizing_;     // The edges being dragged, or 0
+  int push_x_;
+  int push_y_;
+  int edges_at(int X, int Y) const;
+  void set_edge_cursor(int edges);
+  static bool inside_cb(Fl_Widget *target);
+  static void payload_cb(Fl_Widget *target, Fl_Dockable_Group *dockable);
+  static void undock_cb(Fl_Widget *target, Fl_Dockable_Group *dockable);
+};
+
 
 // What a panel dragged over a docked one would do: join it as a tab, stack before or after it along
 // the place, stack before or after it across the place, or, over a stripe, auto-hide there

@@ -57,6 +57,7 @@ class FL_DOCKABLE_EXPORT Fl_Dockable_Panel : public Fl_Dockable_Group {
   friend class Fl_Dockable_Bar;
   friend class Fl_Dockable_Tabs;
   friend class Fl_Dockable_Stripe;
+  friend class Fl_Dockable_Holder;
 
 public:
   Fl_Dockable_Panel(Fl_Dockable_Area *area, int W, int H, const char *title = 0,
@@ -175,6 +176,8 @@ private:
   void in_window();
   void built_size();
   void rearm();
+  Fl_Window *hold_captive();
+  void holder_sized();
   static void window_cb(Fl_Widget *w, void *data);
 
   Fl_Dockable_Area *area_;

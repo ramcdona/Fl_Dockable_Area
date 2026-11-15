@@ -93,8 +93,6 @@ Fl_Dockable_Panel::Fl_Dockable_Panel(Fl_Dockable_Area *area, int W, int H, const
   label_for_states(title_.c_str(), title_.c_str(), title_.c_str());
   color_for_states(FL_DARK3, FL_DARK3, FL_SELECTION_COLOR);
   drag_widget(bar_);
-  // Released over the area's captive layer, it floats captive there
-  captive(area->captive_layer());
   area->register_panel(this);
 }
 
@@ -191,6 +189,33 @@ void Fl_Dockable_Panel::rearm() {
   Fl_Widget *drag = drag_widget();
   drag_widget(0);
   drag_widget(drag);
+}
+
+// Puts the panel, in no window, in a holder made for it in the area's captive layer: docked there,
+// so FLTK undocks it from there to drag it.  The holder is returned, not shown.
+Fl_Window *Fl_Dockable_Panel::hold_captive() {
+  Fl_Group *layer = area_->captive_layer();
+  int m = Fl_Dockable_Holder::margin();
+  Fl_Group *cur = Fl_Group::current();
+  Fl_Group::current(0);
+  // Sized before the panel is in it, so the panel keeps its size
+  Fl_Dockable_Holder *holder = new Fl_Dockable_Holder(0, 0, w() + 2 * m, h() + 2 * m);
+  holder->end();
+  Fl_Group::current(cur);
+  layer->add(holder);
+  holder->add(this);
+  position(m, m);
+  holder->resizable(this);
+  rearm();
+  return holder;
+}
+
+// Its holder was sized from its frame: the size is kept, and saved
+void Fl_Dockable_Panel::holder_sized() {
+  keep_float_place();
+  if (area_) {
+    area_->notify(this, FL_REASON_DRAGGED);
+  }
 }
 
 // Every visible subwindow under a group
@@ -611,7 +636,6 @@ void Fl_Dockable_Panel::slide_out(int X, int Y, int W, int H) {
   if (!area_) {
     return;
   }
-  Fl_Group *layer = area_->captive_layer();
   if (docked()) {
     hide_subwindows();
     area_->hide_column(this);
@@ -627,7 +651,7 @@ void Fl_Dockable_Panel::slide_out(int X, int Y, int W, int H) {
   }
   if (!parent()) {
     hide_subwindows();
-    make_draggable(layer);
+    hold_captive();
     in_window();
   }
   win = window();
@@ -790,27 +814,9 @@ void Fl_Dockable_Panel::float_as(int captive) {
   }
 
   if (parent() && !docked()) {
-    // The window it floats in moves into the layer, or out of it, as FLTK moves it when it is
-    // released
-    hide_subwindows();
-    win->hide();
-    if (win->parent()) {
-      win->parent()->remove(win);
-    }
-    if (captive) {
-      win->clear_modal_states();
-      layer->add(win);
-      win->position(X - main->x_root(), Y - main->y_root());
-      layer->resize(layer->x(), layer->y(), layer->w(), layer->h());
-    } else {
-      win->set_non_modal();
-      win->position(X, Y);
-    }
-    win->show();
-    show_subwindows();
-    keep_float_place();
-    area_->notify(this, FL_REASON_DRAGGED);
-    return;
+    // Floated again, at its size, in a holder or a window of its own
+    float_size(win->w(), win->h());
+    unfloat();
   }
 
   if (captive) {
@@ -973,14 +979,14 @@ void Fl_Dockable_Panel::float_panel(int X, int Y, int captive) {
     area_->hide_column(this);
   }
   if (!parent()) {
-    // make_draggable() puts it in a window FLTK makes, as dragging it out of the area does
+    // A holder in the captive layer, or a window FLTK makes, as dragging it out of the area does
     hide_subwindows();
-    // A subwindow of the captive group, or a top-level window
-    Fl_Group *in = nullptr;
+    Fl_Window *win;
     if (captive) {
-      in = area_->captive_layer();
+      win = hold_captive();
+    } else {
+      win = make_draggable();
     }
-    Fl_Window *win = make_draggable(in);
     in_window();
     built_size();
     win->position(X, Y);
