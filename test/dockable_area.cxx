@@ -10,7 +10,7 @@
 //     https://www.fltk.org/COPYING.php
 //
 
-// A center view with panels around it.  Drag a panel's title bar to dock it
+// An OpenGL center view with panels around it.  Drag a panel's title bar to dock it
 // along a border, as a tab of another (over its middle), stacked before or
 // after it (over its ends) or across a part of a stack (over its sides), or to
 // float it, inside this window or, dragged out of it, in a window of its own;
@@ -24,7 +24,8 @@
 // - Output and Log are tabs; Log lists what the area's callback reports.
 // - Tools auto-hides: it slides out from its button on the left stripe and
 //   away again on a click elsewhere or Escape.
-// - Find starts floating inside this window.
+// - Find starts floating inside this window, above the OpenGL center: drag any
+//   panel over the center away from the borders and it floats there too.
 // - Box Editor and Text Editor take turns in one place: showing one hides the
 //   other.
 // - Notes asks before it closes.
@@ -127,6 +128,86 @@ private:
       v->redraw();
     }
     Fl::repeat_timeout(0.05, tick, data);
+  }
+  double angle_;
+};
+
+// The center: a lit cube turning in an orthographic view, drawn all the time, so the panels floating
+// captive above it are seen to stay above it
+class Scene_View : public Fl_Gl_Window {
+public:
+  Scene_View(int X, int Y, int W, int H) : Fl_Gl_Window(X, Y, W, H), angle_(0) {
+    mode(FL_RGB | FL_DOUBLE | FL_DEPTH);
+    Fl::add_timeout(0.03, tick, this);
+  }
+  ~Scene_View() override { Fl::remove_timeout(tick, this); }
+  void draw() override {
+    glViewport(0, 0, pixel_w(), pixel_h());
+    glClearColor(0.12f, 0.14f, 0.18f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL);
+    glEnable(GL_NORMALIZE);
+    GLfloat light[] = {0.4f, 0.6f, 1.0f, 0.0f};
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    int ht = h();
+    if (ht < 1) {
+      ht = 1;
+    }
+    double aspect = (double)w() / ht;
+    if (aspect >= 1) {
+      glOrtho(-1.6 * aspect, 1.6 * aspect, -1.6, 1.6, -10, 10);
+    } else {
+      glOrtho(-1.6, 1.6, -1.6 / aspect, 1.6 / aspect, -10, 10);
+    }
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glLightfv(GL_LIGHT0, GL_POSITION, light);
+    glRotatef(25.0f, 1.0f, 0.0f, 0.0f);
+    glRotatef((float)angle_, 0.0f, 1.0f, 0.0f);
+    glRotatef((float)angle_ * 0.37f, 1.0f, 0.0f, 0.0f);
+
+    // Six faces, each its own color
+    static const GLfloat n[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    static const GLfloat c[6][3] = {{0.9f, 0.3f, 0.3f}, {0.3f, 0.8f, 0.4f}, {0.3f, 0.5f, 0.9f},
+                                    {0.9f, 0.8f, 0.3f}, {0.8f, 0.4f, 0.9f}, {0.3f, 0.8f, 0.9f}};
+    glBegin(GL_QUADS);
+    for (int f = 0; f < 6; f++) {
+      glColor3fv(c[f]);
+      glNormal3fv(n[f]);
+      // Two axes across the face
+      int a = (f / 2 + 1) % 3;
+      int b = (f / 2 + 2) % 3;
+      static const int corners[4][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+      for (int k = 0; k < 4; k++) {
+        GLfloat v[3];
+        v[f / 2] = n[f][f / 2];
+        v[a] = (GLfloat)corners[k][0];
+        v[b] = (GLfloat)corners[k][1];
+        if (n[f][f / 2] < 0) {
+          // Wound the other way, so every face is front facing outward
+          v[a] = (GLfloat)corners[3 - k][0];
+          v[b] = (GLfloat)corners[3 - k][1];
+        }
+        glVertex3f(0.8f * v[0], 0.8f * v[1], 0.8f * v[2]);
+      }
+    }
+    glEnd();
+    glDisable(GL_LIGHTING);
+  }
+
+private:
+  static void tick(void *data) {
+    Scene_View *v = (Scene_View *)data;
+    v->angle_ += 1.5;
+    if (v->visible_r()) {
+      v->redraw();
+    }
+    Fl::repeat_timeout(0.03, tick, data);
   }
   double angle_;
 };
@@ -285,8 +366,7 @@ int main(int argc, char **argv) {
   // The area does not become the current group; the layer over it holds the
   // windows of panels floating inside this window
   Fl_Group::current(0);
-  Fl_Box *center = new Fl_Box(FL_DOWN_BOX, 0, 0, 10, 10, "Center");
-  center->color(FL_WHITE);
+  Scene_View *center = new Scene_View(0, 0, 10, 10);
   area = new Fl_Dockable_Area(0, 25, 1200, 775, center);
   area->min_center(200, 150);
   win->add(area);
@@ -379,6 +459,8 @@ int main(int argc, char **argv) {
   area->callback(area_cb);
   win->callback(quit_cb);
   win->show(argc, argv);
+  // A subwindow starts hidden; shown after its window, it draws there
+  center->show();
   area->show_saved();
   return Fl::run();
 }
