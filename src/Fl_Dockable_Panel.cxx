@@ -248,9 +248,11 @@ void Fl_Dockable_Panel::hide_subwindows() {
 void Fl_Dockable_Panel::show_subwindows() {
   Fl_Window *win = window();
   bool shown = (win && win->shown() && parent());
+  bool any = false;
   for (size_t i = 0; i < subwindows_.size(); i++) {
     if (shown) {
       subwindows_[i]->show();
+      any = true;
     } else {
       subwindows_[i]->set_visible();
     }
@@ -263,8 +265,13 @@ void Fl_Dockable_Panel::show_subwindows() {
     for (size_t i = 0; i < subs.size(); i++) {
       if (!subs[i]->shown() && subs[i]->visible_r()) {
         subs[i]->show();
+        any = true;
       }
     }
+  }
+  // A subwindow shown in the area is drawn above the panels floating captive, shown before it
+  if (any && area_ && docked()) {
+    area_->raise_captive();
   }
 }
 

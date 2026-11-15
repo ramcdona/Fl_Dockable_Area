@@ -304,6 +304,7 @@ private:
   Fl_Dockable_Stripe *stripe(int side) { return stripes_[side]; }
   void slide_out(Fl_Dockable_Panel *d);
   void slid_away(Fl_Dockable_Panel *d);
+  void raise_captive();
   Fl_Dockable_Panel *slid() { return slid_; }
   void pushed_at(Fl_Window *w);
   void borders_dragged();

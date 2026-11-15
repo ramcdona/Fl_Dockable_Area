@@ -602,6 +602,32 @@ void Fl_Dockable_Area::slide_out(Fl_Dockable_Panel *d) {
   }
 }
 
+// The panels floating captive are shown again, so they are drawn above the subwindows shown in the
+// area since: a subwindow is drawn above those shown before it, whatever the order of the widgets
+void Fl_Dockable_Area::raise_captive() {
+  if (!captive_) {
+    return;
+  }
+  for (int i = 0; i < captive_->children(); i++) {
+    Fl_Dockable_Holder *h = dynamic_cast<Fl_Dockable_Holder *>(captive_->child(i));
+    if (!h || !h->shown() || !h->visible()) {
+      continue;
+    }
+    Fl_Dockable_Panel *d = nullptr;
+    if (h->children() > 0) {
+      d = dynamic_cast<Fl_Dockable_Panel *>(h->child(0));
+    }
+    if (d) {
+      d->hide_subwindows();
+    }
+    h->hide();
+    h->show();
+    if (d) {
+      d->show_subwindows();
+    }
+  }
+}
+
 void Fl_Dockable_Area::slid_away(Fl_Dockable_Panel *d) {
   if (slid_ == d) {
     slid_ = nullptr;
@@ -1811,6 +1837,10 @@ int Fl_Dockable_Area::handle(int event) {
       }
     }
     if (processed) {
+      // FLTK shows a panel's subwindows once it has docked it
+      if (event == FL_DOCK_RELEASE && r) {
+        raise_captive();
+      }
       return r;
     }
   }
